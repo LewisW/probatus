@@ -110,6 +110,7 @@ class ShapRFECV(BaseFitComputePlotClass):
         n_jobs=-1,
         verbose=0,
         random_state=None,
+        explainer=None,
     ):
         """
         This method initializes the class.
@@ -164,6 +165,9 @@ class ShapRFECV(BaseFitComputePlotClass):
                 Random state set at each round of feature elimination. If it is None, the results will not be
                 reproducible and in random search at each iteration a different hyperparameters might be tested. For
                 reproducible results set it to an integer.
+                
+            explainer (Explainer or explainer config, optional):
+                Pass a pre-configured explainer object or explainer config
         """  # noqa
         self.clf = clf
         if isinstance(self.clf, BaseSearchCV):
@@ -197,6 +201,7 @@ class ShapRFECV(BaseFitComputePlotClass):
         self.n_jobs = n_jobs
         self.report_df = pd.DataFrame([])
         self.verbose = verbose
+        self.explainer = explainer
 
     def _get_current_features_to_remove(self, shap_importance_df, columns_to_keep=None):
         """
@@ -395,7 +400,7 @@ class ShapRFECV(BaseFitComputePlotClass):
         score_val = self.scorer.scorer(clf, X_val, y_val)
 
         # Compute SHAP values
-        shap_values = shap_calc(clf, X_val, verbose=self.verbose, **shap_kwargs)
+        shap_values = shap_calc(clf, X_val, verbose=self.verbose, explainer=self.explainer, **shap_kwargs)
         return shap_values, score_train, score_val
 
     def fit(
@@ -829,6 +834,7 @@ class EarlyStoppingShapRFECV(ShapRFECV):
         random_state=None,
         early_stopping_rounds=5,
         eval_metric="auc",
+        explainer=None,
     ):
         """
         This method initializes the class.
@@ -901,6 +907,9 @@ class EarlyStoppingShapRFECV(ShapRFECV):
                 supported by some models, such as [XGBoost](https://xgboost.readthedocs.io/en/latest/parameter.html#learning-task-parameters)
                  and [LightGBM](https://lightgbm.readthedocs.io/en/latest/Parameters.html#metric-parameters).
                 Note that `eval_metric` is an argument of the model's fit method and it is different from `scoring`.
+                
+            explainer (Explainer or explainer config, optional):
+                Pass a pre-configured explainer object or explainer config
         """  # noqa
         super(EarlyStoppingShapRFECV, self).__init__(
             clf,
@@ -933,6 +942,7 @@ class EarlyStoppingShapRFECV(ShapRFECV):
             )
 
         self.eval_metric = eval_metric
+        self.explainer = explainer
 
     def _get_fit_params_lightGBM(
         self, X_train, y_train, X_val, y_val, sample_weight=None, train_index=None, val_index=None
@@ -1245,5 +1255,5 @@ class EarlyStoppingShapRFECV(ShapRFECV):
         score_val = self.scorer.scorer(clf, X_val, y_val)
 
         # Compute SHAP values
-        shap_values = shap_calc(clf, X_val, verbose=self.verbose, **shap_kwargs)
+        shap_values = shap_calc(clf, X_val, verbose=self.verbose, explainer=self.explainer, **shap_kwargs)
         return shap_values, score_train, score_val
