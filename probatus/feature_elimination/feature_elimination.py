@@ -541,7 +541,7 @@ class ShapRFECV(BaseFitComputePlotClass):
                 current_clf = clone(self.clf)
 
             # Perform CV to estimate feature importance with SHAP
-            results_per_fold = Parallel(n_jobs=self.n_jobs)(
+            results_per_fold = Parallel(n_jobs=self.n_jobs, prefer="processes")(
                 delayed(self._get_feature_shap_values_per_fold)(
                     X=current_X,
                     y=self.y,
