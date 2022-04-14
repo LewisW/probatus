@@ -390,15 +390,18 @@ class ShapRFECV(BaseFitComputePlotClass):
         X_train, X_val = X.iloc[train_index, :], X.iloc[val_index, :]
         y_train, y_val = y.iloc[train_index], y.iloc[val_index]
 
+        print('Fitting probatus fold')
         if sample_weight is not None:
             clf = clf.fit(X_train, y_train, sample_weight=sample_weight.iloc[train_index])
         else:
             clf = clf.fit(X_train, y_train)
 
+        print('Scoring probatus')
         # Score the model
         score_train = self.scorer.scorer(clf, X_train, y_train)
         score_val = self.scorer.scorer(clf, X_val, y_val)
 
+        print('Calculating SHAP')
         # Compute SHAP values
         shap_values = shap_calc(clf, X_val, verbose=self.verbose, explainer=self.explainer, **shap_kwargs)
         return shap_values, score_train, score_val
@@ -491,7 +494,7 @@ class ShapRFECV(BaseFitComputePlotClass):
                     "Minimum features to select is greater than number of features."
                     "Lower the value for min_features_to_select or number of columns in columns_to_keep"
                 )
-
+        print('Preprocess probatus')
         self.X, self.column_names = preprocess_data(X, X_name="X", column_names=column_names, verbose=self.verbose)
         self.y = preprocess_labels(y, y_name="y", index=self.X.index, verbose=self.verbose)
         if sample_weight is not None:
@@ -500,6 +503,7 @@ class ShapRFECV(BaseFitComputePlotClass):
                     "sample_weight is passed only to the fit method of the model, not the evaluation metrics."
                 )
             sample_weight = assure_pandas_series(sample_weight, index=self.X.index)
+        print('Check CV')
         self.cv = check_cv(self.cv, self.y, classifier=is_classifier(self.clf))
 
         remaining_features = current_features_set = self.column_names
@@ -540,9 +544,9 @@ class ShapRFECV(BaseFitComputePlotClass):
             else:
                 current_clf = clone(self.clf)
 
+            print('Results per fold')
             # Perform CV to estimate feature importance with SHAP
-            results_per_fold = Parallel(n_jobs=self.n_jobs, prefer="processes")(
-                delayed(self._get_feature_shap_values_per_fold)(
+            results_per_fold = (self._get_feature_shap_values_per_fold(
                     X=current_X,
                     y=self.y,
                     clf=current_clf,
@@ -559,13 +563,16 @@ class ShapRFECV(BaseFitComputePlotClass):
             scores_val = [current_result[2] for current_result in results_per_fold]
 
             # Calculate the shap features with remaining features and features to keep.
+            print('Calculate importance')
 
             shap_importance_df = calculate_shap_importance(shap_values, remaining_removeable_features)
 
+            print('Features to remove')
             # Get features to remove
             features_to_remove = self._get_current_features_to_remove(
                 shap_importance_df, columns_to_keep=columns_to_keep
             )
+            print(features_to_remove)
             remaining_features = list(set(current_features_set) - set(features_to_remove))
 
             # Report results
